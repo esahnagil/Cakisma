@@ -169,20 +169,21 @@ export class MonitorService {
         this.notifyListeners('alert', alert);
       }
       
-      // Emit a device status update to all clients
-      this.notifyListeners('deviceStatus', {
-        id: device.id,
-        name: device.name,
-        status: status,
-        lastCheck: new Date().toISOString(),
-        responseTime: responseTime
-      });
-      
-      // Notify listeners about the updated monitor result
-      this.notifyListeners('monitorResult', {
-        monitorId: monitor.id,
-        deviceId: device.id,
-        result
+      // Emit a single unified status update to all clients
+      this.notifyListeners('monitorUpdate', {
+        device: {
+          id: device.id,
+          name: device.name,
+          status: status,
+          lastCheck: new Date().toISOString(),
+          responseTime: responseTime
+        },
+        monitor: {
+          id: monitor.id,
+          type: monitor.type,
+          config: monitor.config
+        },
+        result: result
       });
       
     } catch (error) {
