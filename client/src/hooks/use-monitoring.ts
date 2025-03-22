@@ -3,6 +3,12 @@ import { monitoringClient } from '@/lib/monitoring';
 
 type ConnectionStatus = 'connected' | 'disconnected' | 'connecting' | 'reconnecting';
 
+interface WebSocketEvent {
+  type: string;
+  data: Record<string, unknown>;
+  timestamp: Date;
+}
+
 interface UseMonitoringOptions {
   autoConnect?: boolean;
 }
@@ -10,7 +16,7 @@ interface UseMonitoringOptions {
 export function useMonitoring(options: UseMonitoringOptions = {}) {
   const { autoConnect = true } = options;
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
-  const [lastEvent, setLastEvent] = useState<any>(null);
+  const [lastEvent, setLastEvent] = useState<WebSocketEvent | null>(null);
 
   useEffect(() => {
     // Sayfaya ilk giriş veya sayfa yenilenmesi durumunda bağlantı kur

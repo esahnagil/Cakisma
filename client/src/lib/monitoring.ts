@@ -1,7 +1,23 @@
 import { Device, Monitor, MonitorResult, Alert } from "@/types";
 import { queryClient } from "./queryClient";
 
-type MonitoringEventCallback = (eventType: string, data: any) => void;
+// Websocket Olayları
+interface WebSocketMessageData {
+  device?: Device;
+  monitor?: Monitor;
+  result?: MonitorResult;
+  alert?: Alert;
+  status?: string;
+  code?: number;
+  reason?: string;
+  attempt?: number;
+  delay?: number;
+  event?: Event;
+  attempts?: number;
+  [key: string]: unknown;
+}
+
+type MonitoringEventCallback = (eventType: string, data: WebSocketMessageData) => void;
 
 class MonitoringClient {
   private socket: WebSocket | null = null;
