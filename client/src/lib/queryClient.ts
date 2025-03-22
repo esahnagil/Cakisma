@@ -7,10 +7,10 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-export async function apiRequest<T = any>(
+export async function apiRequest<T = unknown>(
   method: string,
   url: string,
-  options?: RequestInit & { body?: any },
+  options?: RequestInit & { body?: Record<string, unknown> },
 ): Promise<T> {
   const requestOptions: RequestInit = {
     method,

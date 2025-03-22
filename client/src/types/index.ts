@@ -9,11 +9,46 @@ export interface Device {
   updatedAt: string;
 }
 
+export interface BaseMonitorConfig {
+  timeoutSeconds: number;
+  thresholdMs: number;
+  retries: number;
+}
+
+export interface ICMPConfig extends BaseMonitorConfig {
+  packetSize?: number;
+  ttl?: number;
+}
+
+export interface HTTPConfig extends BaseMonitorConfig {
+  url: string;
+  method?: string;
+  headers?: Record<string, string>;
+  body?: string;
+  validateSSL?: boolean;
+  expectedStatusCode?: number;
+  requestTimeoutMs?: number;
+}
+
+export interface TCPConfig extends BaseMonitorConfig {
+  port: number;
+  connectionTimeoutMs?: number;
+}
+
+export interface SNMPConfig extends BaseMonitorConfig {
+  oids: string[];
+  community?: string;
+  version?: string;
+  port?: number;
+}
+
+export type MonitorConfig = ICMPConfig | HTTPConfig | TCPConfig | SNMPConfig;
+
 export interface Monitor {
   id: number;
   deviceId: number;
-  type: string;
-  config: any;
+  type: 'icmp' | 'http' | 'tcp' | 'snmp';
+  config: MonitorConfig;
   enabled: boolean;
   interval: number;
   createdAt: string;
@@ -21,13 +56,28 @@ export interface Monitor {
   latestResult?: MonitorResult;
 }
 
+export interface MonitorResultDetails {
+  error?: string;
+  message?: string;
+  statusCode?: number;
+  headers?: Record<string, string>;
+  responseBody?: string;
+  packetLoss?: number;
+  roundTripTime?: {
+    min?: number;
+    avg?: number;
+    max?: number;
+  };
+  [key: string]: unknown;
+}
+
 export interface MonitorResult {
   id: number;
   monitorId: number;
   timestamp: string;
-  status: string;
+  status: 'online' | 'offline' | 'warning' | 'unknown';
   responseTime?: number;
-  details?: any;
+  details?: MonitorResultDetails;
 }
 
 export interface Alert {
@@ -58,7 +108,7 @@ export interface DashboardSummary {
 }
 
 export interface DeviceWithStatus extends Device {
-  status?: string;
+  status?: 'online' | 'offline' | 'warning' | 'unknown';
   responseTime?: number; // Used for both API and real-time websocket updates
   lastCheck?: string;  // Used for both API and real-time websocket updates
 }

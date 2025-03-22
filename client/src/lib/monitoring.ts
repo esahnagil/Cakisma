@@ -1,9 +1,9 @@
-import { Device, Monitor, MonitorResult, Alert } from "@/types";
+import { Device, DeviceWithStatus, Monitor, MonitorResult, Alert } from "@/types";
 import { queryClient } from "./queryClient";
 
 // Websocket Olayları
 interface WebSocketMessageData {
-  device?: Device;
+  device?: DeviceWithStatus;
   monitor?: Monitor;
   result?: MonitorResult;
   alert?: Alert;
@@ -14,6 +14,8 @@ interface WebSocketMessageData {
   delay?: number;
   event?: Event;
   attempts?: number;
+  id?: number;
+  monitorId?: number;
   [key: string]: unknown;
 }
 
@@ -207,7 +209,7 @@ class MonitoringClient {
   /**
    * Notify all registered callbacks of an event
    */
-  private notifyCallbacks(eventType: string, data: any) {
+  private notifyCallbacks(eventType: string, data: WebSocketMessageData) {
     this.eventCallbacks.forEach(callback => {
       try {
         callback(eventType, data);
@@ -220,7 +222,7 @@ class MonitoringClient {
   /**
    * Update the React Query cache based on WebSocket events
    */
-  private updateQueryCache(type: string, data: any) {
+  private updateQueryCache(type: string, data: WebSocketMessageData) {
     switch (type) {
       case 'devices':
         queryClient.setQueryData(['/api/devices'], data);
@@ -243,10 +245,11 @@ class MonitoringClient {
             if (existingDevice.id === device.id) {
               return {
                 ...existingDevice,
+                // Cast existing device to DeviceWithStatus to add the additional fields
                 status: device.status,
                 responseTime: device.responseTime,
                 lastCheck: device.lastCheck
-              };
+              } as DeviceWithStatus;
             }
             return existingDevice;
           });
@@ -291,15 +294,16 @@ class MonitoringClient {
         
         // Update the device in the cache if it exists
         const deviceStatusUpdate = queryClient.getQueryData<Device[]>(['/api/devices']);
-        if (deviceStatusUpdate) {
+        if (deviceStatusUpdate && data.id) {
           const updatedDevices = deviceStatusUpdate.map(device => {
             if (device.id === data.id) {
               return {
                 ...device,
-                status: data.status,
-                responseTime: data.responseTime,
-                lastCheck: data.lastCheck
-              };
+                // Cast existing device to DeviceWithStatus
+                status: data.status as 'online' | 'offline' | 'warning' | 'unknown',
+                responseTime: data.responseTime as number,
+                lastCheck: data.lastCheck as string
+              } as DeviceWithStatus;
             }
             return device;
           });
