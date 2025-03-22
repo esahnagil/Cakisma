@@ -188,14 +188,68 @@ class MonitoringClient {
         queryClient.invalidateQueries({ queryKey: ['/api/dashboard/summary'] });
         break;
       
+      case 'monitorUpdate':
+        // Handle the unified monitor update event
+        console.log('Received monitor update:', data);
+        const { device, monitor, result } = data;
+        
+        // Update device status in the devices list
+        const devices = queryClient.getQueryData<Device[]>(['/api/devices']);
+        if (devices && device) {
+          const updatedDevices = devices.map(existingDevice => {
+            if (existingDevice.id === device.id) {
+              return {
+                ...existingDevice,
+                status: device.status,
+                responseTime: device.responseTime,
+                lastCheck: device.lastCheck
+              };
+            }
+            return existingDevice;
+          });
+          queryClient.setQueryData(['/api/devices'], updatedDevices);
+          
+          // Invalidate single device data if it's loaded
+          queryClient.invalidateQueries({ queryKey: ['/api/devices', device.id] });
+        }
+        
+        // Update monitor results if monitor data is available
+        if (monitor && result) {
+          // Update the latest monitor result
+          queryClient.setQueryData(
+            ['/api/monitor-results', monitor.id, 'latest'],
+            result
+          );
+
+          // Update monitor's latest result in monitors list
+          const monitors = queryClient.getQueryData<Monitor[]>(['/api/monitors']);
+          if (monitors) {
+            const updatedMonitors = monitors.map(existingMonitor => {
+              if (existingMonitor.id === monitor.id) {
+                return {
+                  ...existingMonitor,
+                  latestResult: result
+                };
+              }
+              return existingMonitor;
+            });
+            queryClient.setQueryData(['/api/monitors'], updatedMonitors);
+          }
+        }
+        
+        // Invalidate dashboard summary to show updated status counts
+        queryClient.invalidateQueries({ queryKey: ['/api/dashboard/summary'] });
+        break;
+      
+      // Keep the original event handlers for backward compatibility
       case 'deviceStatus':
         // Update device status in the devices list
         console.log('Received device status update:', data);
         
         // Update the device in the cache if it exists
-        const devices = queryClient.getQueryData<Device[]>(['/api/devices']);
-        if (devices) {
-          const updatedDevices = devices.map(device => {
+        const deviceStatusUpdate = queryClient.getQueryData<Device[]>(['/api/devices']);
+        if (deviceStatusUpdate) {
+          const updatedDevices = deviceStatusUpdate.map(device => {
             if (device.id === data.id) {
               return {
                 ...device,
@@ -224,9 +278,9 @@ class MonitoringClient {
         );
 
         // If we have monitors data in the cache, update the monitor's latest result
-        const monitors = queryClient.getQueryData<Monitor[]>(['/api/monitors']);
-        if (monitors) {
-          const updatedMonitors = monitors.map(monitor => {
+        const monitorResults = queryClient.getQueryData<Monitor[]>(['/api/monitors']);
+        if (monitorResults) {
+          const updatedMonitors = monitorResults.map(monitor => {
             if (monitor.id === data.monitorId) {
               return {
                 ...monitor,

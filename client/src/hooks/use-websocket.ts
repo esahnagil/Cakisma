@@ -1,42 +1,30 @@
-import { useEffect, useRef, useState } from 'react';
-import { Metric } from '@shared/schema';
+import { useMonitoring } from './use-monitoring';
+import { useState, useEffect } from 'react';
 
-interface WebSocketMessage {
-  type: string;
-  deviceId: number;
-  data: Metric;
-}
-
+/**
+ * @deprecated Kullanımdan kaldırılmıştır. Bunun yerine `useMonitoring` kullanın.
+ */
 export function useWebSocket() {
-  const [lastMetric, setLastMetric] = useState<Metric | null>(null);
-  const socketRef = useRef<WebSocket | null>(null);
-
+  const [lastMetric, setLastMetric] = useState<any>(null);
+  const { lastEvent } = useMonitoring(); // Var olan useMonitoring hook'unu kullan
+  
   useEffect(() => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}/ws/monitoring`;
-    
-    const socket = new WebSocket(wsUrl);
-    socketRef.current = socket;
-
-    socket.addEventListener('message', (event) => {
-      try {
-        const message: WebSocketMessage = JSON.parse(event.data);
-        if (message.type === 'metric') {
-          setLastMetric(message.data);
-        }
-      } catch (error) {
-        console.error('Failed to parse WebSocket message:', error);
+    // useMonitoring'den gelen monitorUpdate olaylarını izle
+    if (lastEvent && lastEvent.type === 'monitorUpdate') {
+      // monitorUpdate içindeki device verilerini kullanarak son metriği güncelle
+      const { device } = lastEvent.data;
+      if (device) {
+        setLastMetric({
+          deviceId: device.id,
+          status: device.status,
+          responseTime: device.responseTime,
+          timestamp: device.lastCheck || new Date().toISOString()
+        });
       }
-    });
-
-    socket.addEventListener('close', () => {
-      console.log('WebSocket connection closed');
-    });
-
-    return () => {
-      socket.close();
-    };
-  }, []);
-
+    }
+  }, [lastEvent]);
+  
+  console.warn('useWebSocket hook\'u kullanımdan kaldırılmıştır. Bunun yerine useMonitoring hook\'unu kullanın.');
+  
   return { lastMetric };
 }
