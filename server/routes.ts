@@ -542,6 +542,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   wss.on('connection', (ws: WebSocket) => {
     console.log('Client connected to WebSocket');
+    
+    // Client sayısını topla
+    const clientCount = wss.clients.size;
+    console.log(`Active WebSocket clients: ${clientCount}`);
 
     // Send initial data
     storage.getDevices().then(devices => {
@@ -552,11 +556,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ws.send(JSON.stringify({ type: 'alerts', data: alerts }));
     });
 
+    // Client'tan gelen mesajları işle
+    ws.on('message', (message: string) => {
+      try {
+        const parsedMessage = JSON.parse(message.toString());
+        console.log('Received WebSocket message:', parsedMessage.type);
+        
+        // Mesaj tipine göre işlem yap
+        switch (parsedMessage.type) {
+          case 'ping':
+            // Basit heartbeat kontrolü
+            ws.send(JSON.stringify({ type: 'pong', timestamp: new Date().toISOString() }));
+            break;
+            
+          case 'getDevices':
+            // Cihazları yeniden gönder
+            storage.getDevices().then(devices => {
+              ws.send(JSON.stringify({ type: 'devices', data: devices }));
+            });
+            break;
+            
+          case 'getAlerts':
+            // Aktif alarmları yeniden gönder
+            storage.getAlerts(parsedMessage.data?.status || 'active').then(alerts => {
+              ws.send(JSON.stringify({ type: 'alerts', data: alerts }));
+            });
+            break;
+            
+          default:
+            console.log(`Unhandled WebSocket message type: ${parsedMessage.type}`);
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    });
+
     // Create a unique event listener for this connection
     const eventListener = (event: string, data: any) => {
       try {
-        ws.send(JSON.stringify({ type: event, data }));
-        console.log(`Sent WebSocket event: ${event}`);
+        if (ws.readyState === ws.OPEN) {
+          ws.send(JSON.stringify({ type: event, data }));
+          console.log(`Sent WebSocket event: ${event}`);
+        }
       } catch (error) {
         console.error('Error sending WebSocket data:', error);
       }

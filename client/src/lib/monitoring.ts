@@ -47,6 +47,27 @@ class MonitoringClient {
       this.isConnecting = false;
       this.attemptReconnect();
     }
+    
+    // Otomatik ping-pong mekanizması kur (bağlantının açık kalmasını sağlar)
+    this.setupPingPong();
+  }
+  
+  /**
+   * Setup a ping-pong mechanism to keep the connection alive
+   */
+  private setupPingPong() {
+    let pingInterval = setInterval(() => {
+      if (this.socket && this.socket.readyState === this.socket.OPEN) {
+        this.socket.send(JSON.stringify({ type: 'ping' }));
+      } else if (!this.socket || this.socket.readyState !== this.socket.CONNECTING) {
+        clearInterval(pingInterval);
+      }
+    }, 30000); // Her 30 saniyede bir ping gönder
+    
+    // Sayfa kapatıldığında interval'ı temizle
+    window.addEventListener('beforeunload', () => {
+      clearInterval(pingInterval);
+    });
   }
 
   /**
@@ -94,6 +115,12 @@ class MonitoringClient {
     try {
       const data = JSON.parse(event.data);
       const { type, data: eventData } = data;
+      
+      // Heartbeat yanıtlarını filtrele
+      if (type === 'pong') {
+        console.debug('Received pong from server');
+        return;
+      }
 
       this.notifyCallbacks(type, eventData);
 
