@@ -1,0 +1,46 @@
+Teşekkürler, konsol çıktısını inceledim. Şimdi projenin mevcut durumunda tespit ettiğim sorunları daha detaylı açıklayıp, çözüm önerileri sunabilirim.
+
+Tespit Edilen Tekrarlı/Gereksiz Kodlar
+1. Server Başlatma Duplikasyonu
+İki farklı dosya (server/index.ts ve server/main.ts) aynı portu (5000) dinlemeye çalışıyor. Ancak projenin npm scriptlerinde dev komutu tsx server/index.ts olarak ayarlanmış ve sorunsuz çalışıyor. Bu durumda main.ts gereksiz duruyor.
+
+2. WebSocket Servisi Çift Uygulaması
+Projede iki farklı WebSocket uygulaması var:
+
+routes.ts içinde normal WebSocket (ws) kullanan bir uygulama
+monitoring.gateway.ts içinde NestJS'in WebSocket Gateway'ini kullanan bir implementasyon
+Bu iki farklı WebSocket uygulaması aynı görevi üstleniyor ve konsol çıktısında gördüğümüz kadarıyla şu anda routes.ts içindeki WebSocket aktif olarak kullanılıyor.
+
+3. Client Tarafında Çift WebSocket Bağlantısı
+Client tarafında da iki farklı WebSocket hook'u var:
+
+hooks/use-monitoring.ts
+hooks/use-websocket.ts
+Her ikisi de aynı amaca hizmet ediyor - cihaz durumlarını ve metrikleri gerçek zamanlı olarak almak.
+
+4. Monitor Servisindeki Tekrarlı Bildirimler
+Monitor servisi, aynı verileri farklı kanallara tekrar tekrar gönderiyor:
+
+Sent WebSocket event: deviceStatus
+Sent WebSocket event: monitorResult
+Bu, aynı bilgilerin farklı formatlarda tekrar tekrar gönderilmesine neden oluyor.
+
+5. Framework Karmaşıklığı
+Proje hem Express.js hem de NestJS özelliklerini kullanıyor, bu durum kodun anlaşılmasını ve bakımını zorlaştırıyor.
+
+Çözüm Önerileri
+1. Tek Bir Server Dosyası Kullanımı
+main.ts dosyası kaldırılabilir veya index.ts ile birleştirilebilir.
+npm scriptleri zaten index.ts dosyasını kullanacak şekilde ayarlanmış, bu değişiklik yapılmadan kalabilir.
+2. Tek WebSocket Uygulaması
+Projenin geri kalanının Express.js kullandığını göz önünde bulundurarak, monitoring.gateway.ts içindeki NestJS tabanlı WebSocket uygulaması kaldırılabilir.
+Mevcut routes.ts içindeki WebSocket uygulaması yeterli ve şu anda aktif olarak kullanıldığını görüyoruz.
+3. Client WebSocket Hook'larını Birleştirme
+use-monitoring.ts ve use-websocket.ts hook'ları tek bir hook altında birleştirilebilir.
+Birleştirilmiş hook daha tutarlı bir kullanım sağlayacak ve kod tekrarını önleyecektir.
+4. Monitor Servisini Optimize Etme
+Monitor servisi içindeki bildirim mantığı sadeleştirilebilir, aynı bilgilerin farklı formatlarda tekrar tekrar gönderilmesi önlenebilir.
+Bildirimler tek bir formatta, tek bir kanaldan gönderilebilir.
+5. Framework Standardizasyonu
+NestJS veya Express.js arasında bir seçim yapılabilir, projenin çoğunluğunun Express.js kullanıyor olması sebebiyle NestJS bileşenleri kaldırılabilir.
+Bu değişiklikler, projenin bakımını kolaylaştıracak, kaynak kullanımını optimize edecek ve potansiyel hataları önleyecektir. İzniniz olursa, bu sorunları çözmek için gerekli değişiklikleri yapmaya başlayabilirim. Hangi sorunun öncelikli olarak çözülmesini istersiniz?
