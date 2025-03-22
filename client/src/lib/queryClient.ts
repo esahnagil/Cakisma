@@ -7,20 +7,38 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-export async function apiRequest(
+export async function apiRequest<T = any>(
   method: string,
   url: string,
-  data?: unknown | undefined,
-): Promise<Response> {
-  const res = await fetch(url, {
+  options?: RequestInit & { body?: any },
+): Promise<T> {
+  const requestOptions: RequestInit = {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
-    body: data ? JSON.stringify(data) : undefined,
+    ...options,
+    headers: {
+      ...(options?.headers || {}),
+      "Content-Type": "application/json",
+    },
     credentials: "include",
-  });
+  };
+  
+  if (options?.body) {
+    requestOptions.body = JSON.stringify(options.body);
+  }
+
+  const res = await fetch(url, requestOptions);
 
   await throwIfResNotOk(res);
-  return res;
+  try {
+    if (method === 'DELETE' || url.includes('/status')) {
+      return {} as T; // Empty response for operations without content
+    }
+    // API yanıtını doğrudan döndür, dönüşüm yapma
+    return await res.json();
+  } catch (e) {
+    console.error("Error parsing JSON response:", e);
+    return {} as T;
+  }
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
@@ -38,6 +56,7 @@ export const getQueryFn: <T>(options: {
     }
 
     await throwIfResNotOk(res);
+    // API yanıtını doğrudan döndür
     return await res.json();
   };
 
